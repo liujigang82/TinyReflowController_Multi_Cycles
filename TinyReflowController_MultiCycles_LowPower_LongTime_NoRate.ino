@@ -5,6 +5,7 @@
   Company: RR@NTU
   Author: Liu Jigang
 
+
   Brief
   =====
   This is an example firmware for our Arduino compatible Tiny Reflow Controller.
@@ -204,7 +205,7 @@ typedef enum REFLOW_PROFILE
 #define PID_KI_REFLOW 100
 #define PID_KD_REFLOW 350
 
-// ***** Cooling STAGE *****
+// ***** Cooling STAGE 1 *****
 #define PID_KP_COOL 300
 #define PID_KI_COOL 200
 #define PID_KD_COOL 350
@@ -564,14 +565,6 @@ void loop()
             // Crude method that works like a charm and safe for the components
             if (startReflow == 0 && input >= (reflowTemperatureMax - 5))
                 startReflow = millis();
-            if(startRamp_rate_time == 0)
-                startRamp_rate_time = millis();
-            if(millis() - startRamp_rate_time >= ONE_MINUTE)
-            {
-                reflowOvenPID.SetTunings(PID_KP_REFLOW, PID_KI_REFLOW, PID_KD_REFLOW);
-                setpoint = input + RAMP_RATE <= reflowTemperatureMax ? input + RAMP_RATE : reflowTemperatureMax;
-                startRamp_rate_time = 0;
-            }
 
             if (input >= (reflowTemperatureMax - 5) && millis() - startReflow >= REFLOW_HOLD_TIME)
             {
@@ -590,23 +583,11 @@ void loop()
             if (startCooling == 0 && input <= TEMPERATURE_COOL_MIN)
                 startCooling = millis();
 
-            if(startCooling_1_rate_time == 0)
-                startCooling_1_rate_time = millis();
-            if(millis() - startCooling_1_rate_time >= ONE_MINUTE)
-            {
-                reflowOvenPID.SetTunings(PID_KP_REFLOW, PID_KI_REFLOW, PID_KD_REFLOW);
-                setpoint = input - COOLING_1_RATE >= TEMPERATURE_COOL_MIN ? input - COOLING_1_RATE : TEMPERATURE_COOL_MIN;
-                startCooling_1_rate_time = 0;
-            }
-
             if (input <= TEMPERATURE_COOL_MIN && millis() - startCooling >= COOLING_HOLD_TIME)
             {
                 // Retrieve current time for buzzer usage
                 buzzerPeriod = millis() + 1000;
-                // Turn on buzzer to indicate completion
-                //digitalWrite(buzzerPin, HIGH);
-                // Turn off reflow process
-                //reflowStatus = REFLOW_STATUS_OFF;
+
                 reflowOvenPID.SetTunings(PID_KP_COOL2, PID_KI_COOL2, PID_KD_COOL2);
                 setpoint = TEMPERATURE_COOL_2_MIN;
                 startCooling = 0;
@@ -616,21 +597,13 @@ void loop()
 
         case REFLOW_STATE_COOL_2:
             // If minimum cool temperature is achieve
-            if(startCooling_2_rate_time == 0)
-                startCooling_2_rate_time = millis();
-            if(millis() - startCooling_2_rate_time >= ONE_MINUTE)
-            {
-                reflowOvenPID.SetTunings(PID_KP_REFLOW, PID_KI_REFLOW, PID_KD_REFLOW);
-                setpoint = input - COOLING_2_RATE >= TEMPERATURE_COOL_2_MIN ? input - COOLING_2_RATE : TEMPERATURE_COOL_2_MIN;
-                startCooling_2_rate_time = 0;
-            }
 
             if (input <= TEMPERATURE_COOL_2_MIN)
             {
                 // Retrieve current time for buzzer usage
                 buzzerPeriod = millis() + 1000;
                 // Turn on buzzer to indicate completion
-                //cycleCounter++;
+                cycleCounter++;
                 if(cycleCounter < CYCLE_TIME){
                     reflowState = REFLOW_STATE_REFLOW;
                     reflowOvenPID.SetTunings(PID_KP_REFLOW, PID_KI_REFLOW, PID_KD_REFLOW);
@@ -648,6 +621,7 @@ void loop()
                 digitalWrite(buzzerPin, LOW);
                 // Reflow process ended
                 reflowStatus = REFLOW_STATUS_OFF;
+
                 reflowState = REFLOW_STATE_IDLE;
             }
             break;
